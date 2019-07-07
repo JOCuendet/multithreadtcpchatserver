@@ -1,7 +1,7 @@
 package org.academiadecodigo.bootcamp;
 
-public class UserColorMapper {
-    private static final String colors [] = {
+class UserColorMapper {
+    private static final String[] colors = {
             "\033[0;30m", // BLACK
             "\033[0;31m", // RED
             "\033[0;32m", // GREEN
@@ -12,9 +12,8 @@ public class UserColorMapper {
             "\033[0;37m"  // WHITE
     };
 
-    public static String getColor(String color){
-        color.toUpperCase();
-        switch (color){
+    static String getColor(String color) {
+        switch (color.toUpperCase()) {
             case "BLACK":
                 return colors[0];
             case "RED":

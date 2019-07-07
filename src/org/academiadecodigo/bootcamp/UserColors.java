@@ -16,16 +16,12 @@ public enum UserColors {
         this.color = color;
     }
 
-    public String getColor() {
-        return color;
-    }
     public static String getColorFromString(String color) {
-        color.toUpperCase();
-        switch (color){
+        switch (color.toUpperCase()) {
             case "BLACK":
                 return "" + BLACK.getColor();
             case "RED":
-               return "" + RED.getColor();
+                return "" + RED.getColor();
             case "GREEN":
                 return "" + GREEN.getColor();
             case "YELLOW":
@@ -36,8 +32,12 @@ public enum UserColors {
                 return "" + PURPLE.getColor();
             case "CYAN":
                 return "" + CYAN.getColor();
-                default:
-                    return "" + WHITE.getColor();
+            default:
+                return "" + WHITE.getColor();
         }
+    }
+
+    public String getColor() {
+        return color;
     }
 }

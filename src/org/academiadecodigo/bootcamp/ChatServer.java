@@ -9,8 +9,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class ChatServer {
+class ChatServer {
 
+    private final int portNumber;
     private ServerSocket serverSocket;
     private ExecutorService clientThreadPool;
     private DataOutputStream out;
@@ -18,15 +19,13 @@ public class ChatServer {
     private Socket clientSocket;
     private CopyOnWriteArrayList<ClientHandler> connectedClientsList = new CopyOnWriteArrayList<>();
 
-    private final int portNumber;
-
-    public ChatServer(int portNumber) {
+    ChatServer(int portNumber) {
         this.clientThreadPool = Executors.newFixedThreadPool(100);
         this.portNumber = portNumber;
         init();
     }
 
-    public void init() {
+    void init() {
         try {
             serverSocket = new ServerSocket(portNumber);
 
@@ -36,30 +35,32 @@ public class ChatServer {
         System.out.println("\nServer online and waiting incoming connections\n");
         startListening();
     }
-    public void removeUserFromList(ClientHandler clientHandler){
+
+    void removeUserFromList(ClientHandler clientHandler) {
         connectedClientsList.remove(clientHandler);
 
     }
-    public void sendMessage(Socket sendingSocket, String message, boolean broadCast) {
+
+    void sendMessage(Socket sendingSocket, String message, boolean broadCast) {
 
         DataOutputStream outMessage;
 
-        if(!broadCast){
-                try {
-                    outMessage = new DataOutputStream(sendingSocket.getOutputStream());
-                    outMessage.writeBytes(message + ConsoleColors.RESET);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                return;
+        if (!broadCast) {
+            try {
+                outMessage = new DataOutputStream(sendingSocket.getOutputStream());
+                outMessage.writeBytes(message + ConsoleColors.RESET);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return;
         }
-        if(broadCast) {
-            if(connectedClientsList != null){
+        if (broadCast) {
+            if (connectedClientsList != null) {
                 for (ClientHandler clientHandler : connectedClientsList) {
                     try {
                         if (!clientHandler.getClientSocket().equals(sendingSocket)) {
                             outMessage = new DataOutputStream(clientHandler.getClientSocket().getOutputStream());
-                            outMessage.writeBytes(message  + ConsoleColors.RESET);
+                            outMessage.writeBytes(message + ConsoleColors.RESET);
                         }
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -70,18 +71,20 @@ public class ChatServer {
     }
 
 
-    public CopyOnWriteArrayList<ClientHandler> getConnectedClientsList() {
+    CopyOnWriteArrayList<ClientHandler> getConnectedClientsList() {
         return connectedClientsList;
     }
 
     private void startListening() {
         try {
-            while (!serverSocket.isClosed()) {
+            synchronized (this) {
+                while (!serverSocket.isClosed()) {
 
-                clientSocket = serverSocket.accept();
-                ClientHandler clientHandler = new ClientHandler(this, clientSocket);
-                connectedClientsList.add(clientHandler);
-                clientThreadPool.submit(clientHandler);
+                    clientSocket = serverSocket.accept();
+                    ClientHandler clientHandler = new ClientHandler(this, clientSocket);
+                    connectedClientsList.add(clientHandler);
+                    clientThreadPool.submit(clientHandler);
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();

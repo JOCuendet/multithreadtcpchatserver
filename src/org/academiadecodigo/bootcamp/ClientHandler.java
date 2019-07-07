@@ -12,24 +12,26 @@ public class ClientHandler implements Runnable {
     private String alias;
     private boolean firstConnection;
     private String userTextColor;
+    private CommandList commandList;
 
-    public ClientHandler(ChatServer chatServer, Socket clientSocket) {
+    ClientHandler(ChatServer chatServer, Socket clientSocket) {
         userTextColor = "";
         firstConnection = true;
         this.clientSocket = clientSocket;
         this.chatServer = chatServer;
+        this.commandList = new CommandList(chatServer, clientSocket);
 
     }
 
-    public String getUserTextColor() {
+    private String getUserTextColor() {
         return userTextColor;
     }
 
-    public void setUserTextColor(String userTextColor) {
+    private void setUserTextColor(String userTextColor) {
         this.userTextColor = userTextColor;
     }
 
-    public Socket getClientSocket() {
+    Socket getClientSocket() {
         return clientSocket;
     }
 
@@ -38,11 +40,11 @@ public class ClientHandler implements Runnable {
         return "User_" + usr.substring(usr.length() - 1);
     }
 
-    public String getAlias() {
+    String getAlias() {
         return alias;
     }
 
-    public void setAlias(String message) {
+    private void setAlias(String message) {
         String[] str = message.split(" ");
         this.alias = str[1];
     }
@@ -54,7 +56,7 @@ public class ClientHandler implements Runnable {
 
 
         while (!clientSocket.isClosed() && (clientSocket != null)) {
-            synchronized (this) {
+
                 try {
                     this.out = new DataOutputStream(clientSocket.getOutputStream());
                     this.in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
@@ -66,13 +68,13 @@ public class ClientHandler implements Runnable {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-            }
+
         }
     }
 
     private void handleUserInput(BufferedReader in) throws IOException {
 
-        if(firstConnection){
+        if (firstConnection) {
             welcomeMessage();
             newUserBroadcast();
             firstConnection = false;
@@ -87,85 +89,88 @@ public class ClientHandler implements Runnable {
             return;
         }
         if (message.equals("/help")) {
+            commandHelp(helpMessage());
 
-            chatServer.sendMessage(clientSocket, helpMessage(), false);
-            log("typed help command");
-            return;
         }
         if (message.equals("/exit")) {
-            String quitMessage = "\n"+ConsoleColors.PURPLE_BOLD_BRIGHT+" #SYS# User: " + getAlias() + " has left the chat.\n";
-            chatServer.sendMessage(clientSocket, quitMessage, true);
             exit();
             return;
         }
-        if(message.startsWith("/whisper ")){
+        if (message.startsWith("/whisper ")) {
+            commandWhisper(message);
 
-            String[] whisperdMessage = message.split(" ");
-
-            if(sendWhisper(whisperdMessage)){
-                log("Whisper sent @" + whisperdMessage[1]);
-                return;
-            }
-            chatServer.sendMessage(clientSocket, "\n #SYS# user "+whisperdMessage[1]+" don't exist or is offline \n", false);
-            return;
 
         }
         if (message.startsWith("/list")) {
-                String[] options = message.split(" ");
-                if(options[1].equals("-users")){
-                    StringBuilder clientsList = new StringBuilder();
-                    for (ClientHandler list : chatServer.getConnectedClientsList()){
-                        clientsList.append(list.alias + " | ");
-                    }
-                    clientsList.substring(clientsList.length() - 2);
-                    log("command /list -users called");
 
-                    chatServer.sendMessage(clientSocket, "" + clientsList, false);
-                    return;
-                }
-                if(options[1].equals("-colors")){
-                    StringBuilder colorsList = new StringBuilder();
-                    for (UserColors colors : UserColors.values()){
-                        colorsList.append(colors.getColor()+ colors.name() + ConsoleColors.RESET + " | ");
-                    }
-                    log("command /list -colors called");
+            commandList(message);
+            commandHelp("/list needs an option -users -colors");
 
-                    chatServer.sendMessage(clientSocket, "" + colorsList, false);
-                    return;
-                }
         }
 
-        if(message.startsWith("/color ")){
-            String[] colorPicked = message.split(" ");
-            setUserTextColor(colorPicked[1].toUpperCase());
-            return;
+        if (message.startsWith("/color ")) {
+            commandChangeTextColor(message);
         }
         if (message.startsWith("/alias")) {
-            String changedUserMessage = "\n"+ConsoleColors.PURPLE_BOLD_BRIGHT+" #SYS# User " + getAlias();
-            setAlias(message);
-            changedUserMessage += " changed alias to: " + getAlias() + "!\n";
-
-            chatServer.sendMessage(clientSocket, changedUserMessage, true);
-            log(changedUserMessage);
-            return;
+            commandChangeAlias(message);
         }
 
-        if(message.endsWith("/") | message.startsWith("/")){
-            chatServer.sendMessage(clientSocket, "\n"+ConsoleColors.PURPLE_BOLD_BRIGHT+" #SYS# Command not recognized. \n Use /help for commands \n", false);
+        if (message.endsWith("/") | message.startsWith("/")) {
+            chatServer.sendMessage(clientSocket, "\n" + ConsoleColors.PURPLE_BOLD_BRIGHT + " #SYS# Command not recognized. \n Use /help for commands \n", false);
             return;
         }
 
         log(message);
-        chatServer.sendMessage(clientSocket,  UserColorMapper.getColor(getUserTextColor()) + getAlias() + ": " + message + "\n", true);
+        sendBroadMessage(message);
     }
+
+    private void commandChangeAlias(String message) {
+        String changedUserMessage = "\n" + ConsoleColors.PURPLE_BOLD_BRIGHT + " #SYS# User " + getAlias();
+        setAlias(message);
+        changedUserMessage += " changed alias to: " + getAlias() + "!\n";
+
+        chatServer.sendMessage(clientSocket, changedUserMessage, true);
+        log(changedUserMessage);
+
+    }
+
+    private void sendBroadMessage(String message) {
+        chatServer.sendMessage(clientSocket, UserColorMapper.getColor(getUserTextColor()) + getAlias() + ": " + message + "\n", true);
+
+    }
+
+    private void commandChangeTextColor(String message) {
+        String[] colorPicked = message.split(" ");
+        setUserTextColor(colorPicked[1].toUpperCase());
+        commandHelp("Color changed successfully!");
+
+    }
+
+    private void commandHelp(String message) {
+        chatServer.sendMessage(clientSocket, "\n #SYS#" + message + " \n", false);
+        log("typed help command");
+
+    }
+
+    private void commandWhisper(String message) {
+        String[] whisperdMessage = message.split(" ");
+
+        if (sendWhisper(whisperdMessage)) {
+            log("Whisper sent @" + whisperdMessage[1]);
+            return;
+        }
+        chatServer.sendMessage(clientSocket, "\n #SYS# user " + whisperdMessage[1] + " don't exist or is offline \n", false);
+
+    }
+
 
     private boolean sendWhisper(String[] whisperdMessage) {
 
-        for (ClientHandler list : chatServer.getConnectedClientsList()){
-            if(whisperdMessage[1].equals(list.alias)){
-                StringBuilder messageStr = new StringBuilder("\n #WHISPER FROM "+getAlias()+": ");
-                for (int i=2; i<whisperdMessage.length; i++){
-                    messageStr.append(whisperdMessage[i]+" ");
+        for (ClientHandler list : chatServer.getConnectedClientsList()) {
+            if (whisperdMessage[1].equals(list.alias)) {
+                StringBuilder messageStr = new StringBuilder("\n #WHISPER FROM " + getAlias() + ": ");
+                for (int i = 2; i < whisperdMessage.length; i++) {
+                    messageStr.append(whisperdMessage[i] + " ");
                 }
                 chatServer.sendMessage(list.getClientSocket(), getAlias() + ": " + messageStr + "\n", false);
                 return true;
@@ -175,7 +180,7 @@ public class ClientHandler implements Runnable {
     }
 
     private String helpMessage() {
-        return  "" + ConsoleColors.PURPLE_BOLD_BRIGHT +
+        return "" + ConsoleColors.PURPLE_BOLD_BRIGHT +
                 "\n" +
                 "\n #SYS# help:" +
                 "\n /help                           [show help menu]" +
@@ -190,13 +195,13 @@ public class ClientHandler implements Runnable {
     }
 
     private void newUserBroadcast() {
-        String newUserBroadcast = "\n"+ConsoleColors.PURPLE_BOLD_BRIGHT +" #SYS# User: " + getAlias() + " joined the chat.\n";
+        String newUserBroadcast = "\n" + ConsoleColors.PURPLE_BOLD_BRIGHT + " #SYS# User: " + getAlias() + " joined the chat.\n";
         chatServer.sendMessage(clientSocket, newUserBroadcast, true);
         log(getAlias() + " Just logged In");
     }
 
     private void welcomeMessage() {
-        String welcomeMessage = "\n"+ConsoleColors.PURPLE_BOLD_BRIGHT +" #SYS# Welcome to the super Chat. for help type [/help]\n";
+        String welcomeMessage = "\n" + ConsoleColors.PURPLE_BOLD_BRIGHT + " #SYS# Welcome to the super Chat. for help type [/help]\n";
         chatServer.sendMessage(clientSocket, welcomeMessage, false);
     }
 
@@ -206,11 +211,41 @@ public class ClientHandler implements Runnable {
 
     private void exit() {
         chatServer.removeUserFromList(this);
-        closeall();
-        System.out.println("\n"+ConsoleColors.PURPLE_BOLD_BRIGHT +" #SYS# " +getAlias() + " left the chat.\n");
+        String quitMessage = "\n" + ConsoleColors.PURPLE_BOLD_BRIGHT + " #SYS# User: " + getAlias() + " has left the chat.\n";
+        chatServer.sendMessage(clientSocket, quitMessage, true);
+        closeAll();
+        log("\n #SYS# " + getAlias() + " left the chat.\n");
     }
 
-    private void closeall() {
+    private void commandList(String message) {
+        String[] options = message.split(" ");
+        if (options[1].equals("-users")) {
+            StringBuilder clientsList = new StringBuilder();
+            for (ClientHandler list : chatServer.getConnectedClientsList()) {
+                clientsList.append(list.alias);
+                clientsList.append(" | ");
+            }
+            clientsList.substring(clientsList.length() - 2);
+            log("command /list -users called");
+
+            chatServer.sendMessage(clientSocket, "" + clientsList, false);
+            return;
+        }
+        if (options[1].equals("-colors")) {
+            StringBuilder colorsList = new StringBuilder();
+            for (UserColors colors : UserColors.values()) {
+                colorsList.append(colors.getColor());
+                colorsList.append(colors.name());
+                colorsList.append(ConsoleColors.RESET);
+                colorsList.append(" | ");
+            }
+            log("command /list -colors called");
+
+            chatServer.sendMessage(clientSocket, "" + colorsList, false);
+        }
+    }
+
+    private void closeAll() {
         close(out);
         close(in);
         close(clientSocket);
