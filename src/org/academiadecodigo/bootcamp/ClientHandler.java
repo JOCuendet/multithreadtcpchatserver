@@ -57,17 +57,17 @@ public class ClientHandler implements Runnable {
 
         while (!clientSocket.isClosed() && (clientSocket != null)) {
 
-                try {
-                    this.out = new DataOutputStream(clientSocket.getOutputStream());
-                    this.in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            try {
+                this.out = new DataOutputStream(clientSocket.getOutputStream());
+                this.in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 
 
-                    handleUserInput(in);
+                handleUserInput(in);
 
 
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
 
         }
     }
@@ -170,7 +170,8 @@ public class ClientHandler implements Runnable {
             if (whisperdMessage[1].equals(list.alias)) {
                 StringBuilder messageStr = new StringBuilder("\n #WHISPER FROM " + getAlias() + ": ");
                 for (int i = 2; i < whisperdMessage.length; i++) {
-                    messageStr.append(whisperdMessage[i] + " ");
+                    messageStr.append(whisperdMessage[i]);
+                    messageStr.append(" ");
                 }
                 chatServer.sendMessage(list.getClientSocket(), getAlias() + ": " + messageStr + "\n", false);
                 return true;

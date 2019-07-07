@@ -54,17 +54,16 @@ class ChatServer {
             }
             return;
         }
-        if (broadCast) {
-            if (connectedClientsList != null) {
-                for (ClientHandler clientHandler : connectedClientsList) {
-                    try {
-                        if (!clientHandler.getClientSocket().equals(sendingSocket)) {
-                            outMessage = new DataOutputStream(clientHandler.getClientSocket().getOutputStream());
-                            outMessage.writeBytes(message + ConsoleColors.RESET);
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
+
+        if (connectedClientsList != null) {
+            for (ClientHandler clientHandler : connectedClientsList) {
+                try {
+                    if (!clientHandler.getClientSocket().equals(sendingSocket)) {
+                        outMessage = new DataOutputStream(clientHandler.getClientSocket().getOutputStream());
+                        outMessage.writeBytes(message + ConsoleColors.RESET);
                     }
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
             }
         }
